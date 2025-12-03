@@ -1,0 +1,15 @@
+cmake_minimum_required(VERSION 3.14)
+project(Assignment_11 VERSION 1.0 DESCRIPTION Group_Chat LANGUAGES C)
+set(CMAKE_C_COMPILER clang)
+include_directories(include)
+set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_C_FLAGS_DEBUG "-Wall -Wextra -g -O0 -fno-omit-frame-pointer")
+set(CMAKE_EXE_LINKER_FLAGS_DEBUG "-pthread -fsanitize=thread")
+#add_compiler_options(-fsanitize=thread)
+#add_link_options(-fsanitize=thread)
+
+#file(GLOB SOURCES "src/*.c")
+#add_executable()
+
+add_executable(server src/server.c)
+add_executable(client src/client.c src/hex_string.c)
