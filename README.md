@@ -48,7 +48,24 @@ This project demonstrates **POSIX sockets**, **multi-threaded servers with pthre
 
 ---
 
-# 🧵 Messaging Protocol
+## 📁 Project Structure
+
+```bash
+.
+├── CMakeLists.txt
+├── .gitignore
+├── include
+│   └── hex_string.h
+├── src
+│   ├── client.c
+│   ├── hex_string.c
+│   └── server.c
+└── README.md
+```
+
+---
+
+## 🧵 Messaging Protocol
 
 All communication between server and clients uses a simple binary framing protocol over TCP:
 
