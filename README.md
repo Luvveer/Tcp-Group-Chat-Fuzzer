@@ -48,8 +48,13 @@ Concurrency and synchronization:
 .
 ├── CMakeLists.txt
 ├── .gitignore
+├── .github
+│   └── workflows
+│       └── ci.yml
 ├── include
 │   └── hex_string.h
+├── scripts
+│   └── run_multi_client_test.sh
 ├── src
 │   ├── client.c
 │   ├── hex_string.c
