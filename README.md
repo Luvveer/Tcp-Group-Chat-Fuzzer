@@ -1,54 +1,48 @@
 # POSIX TCP Group Chat Fuzzer
 
-A multi-client **TCP group chat server** and **fuzzing client** implemented in C.  
-The server relays messages between clients, and each client generates randomized hex messages, logs everything, and participates in a simple termination protocol.
+A multi-client TCP group chat server and fuzzing client implemented in C.
+The server relays messages between clients, and each client generates
+randomized hex messages, logs everything, and participates in a simple
+termination protocol.
 
-This project demonstrates **POSIX sockets**, **multi-threaded servers with pthreads**, custom **binary message protocols**, and robust network I/O.
+This project demonstrates POSIX sockets, multi-threaded servers with
+pthreads, and a custom binary message protocol.
 
----
+## Features
 
-## 🚀 Features
+TCP group chat server:
+- Accepts multiple simultaneous clients
+- Broadcasts every message to all connected clients, including the sender
+- Preserves message ordering across all clients
+- Tracks clients and manages a coordinated shutdown using a type-1 control message
 
-- TCP group chat server that:
-  - Accepts multiple simultaneous clients
-  - Broadcasts every message to **all** connected clients (including the sender)
-  - Preserves **message ordering** across all clients
-  - Tracks clients and manages a coordinated shutdown using a type-1 control message
+Fuzzing client:
+- Connects to the server over IPv4
+- Generates random bytes using `getentropy()`
+- Encodes data as printable hex strings (via `hex_string.c`)
+- Sends a configurable number of messages
+- Logs all received messages to a file
 
-- Fuzzing client that:
-  - Connects to the server over IPv4
-  - Generates random bytes using `getentropy()`
-  - Encodes data as printable hex strings (via `hex_string.c`)
-  - Sends a configurable number of messages
-  - Logs all received messages to a file
+Custom message protocol:
+- Type-tagged messages (`0` = chat, `1` = termination)
+- Server attaches sender IP and port to each broadcast
+- Length-prefixed framing (see below)
 
-- Custom message protocol:
-  - Type-tagged messages (`0` = chat, `1` = termination)
-  - Server attaches sender IP + port to each broadcast
-  - Messages delimited by `'\n'` and buffered correctly
+Concurrency and synchronization:
+- One thread per client on the server
+- Mutex-protected shared structures (client list, termination counter)
+- Client uses a background thread to print and log server messages while sending
 
-- Concurrency & synchronization:
-  - One thread per client on the server
-  - Mutex-protected shared structures (client list, termination counter)
-  - Client uses a background thread to print and log server messages while sending
+## Tech stack
 
----
+- Language: C
+- Networking: POSIX sockets (`AF_INET`, `SOCK_STREAM`)
+- Concurrency: POSIX threads (`pthread`)
+- Randomness: `getentropy()` for fuzzed payloads
+- Build system: CMake
+- Platform: Linux / POSIX-compliant systems
 
-## 🛠 Tech Stack
-
-- **Language:** C
-- **Networking:** POSIX sockets (`AF_INET`, `SOCK_STREAM`)
-- **Concurrency:** POSIX threads (`pthread`)
-- **Randomness:** `getentropy()` for fuzzed payloads
-- **Build System:** CMake
-- **Platform:** Linux / POSIX-compliant systems
-- **Development Environment:**
-  - Shell: `zsh`
-  - Editor: Neovim (`nvim`)
-
----
-
-## 📁 Project Structure
+## Project structure
 
 ```bash
 .
@@ -63,11 +57,9 @@ This project demonstrates **POSIX sockets**, **multi-threaded servers with pthre
 └── README.md
 ```
 
----
+## Messaging protocol
 
-## 🧵 Messaging Protocol
-
-All communication between server and clients is **length-prefixed framing**
+All communication between server and clients is length-prefixed framing
 over TCP:
 
 ```text
@@ -75,7 +67,7 @@ over TCP:
 [4..N+3] : N bytes of frame body
 ```
 
-Each frame body starts with a **type byte** (`uint8_t`):
+Each frame body starts with a type byte (`uint8_t`):
 - `0` → regular chat message
 - `1` → termination / end-of-execution message
 
@@ -87,11 +79,11 @@ Each frame body starts with a **type byte** (`uint8_t`):
 > prefix removes the ambiguity. See [Known limitations](#known-limitations)
 > for how this was found.
 
-### Server → Client (type 0)
+### Server → client (type 0)
 
 When the server receives a type-0 frame from a client, it:
 
-1. Determines the sender’s IP (`uint32_t`) and port (`uint16_t`)
+1. Determines the sender's IP (`uint32_t`) and port (`uint16_t`)
 2. Broadcasts the following body to all clients, in one length-prefixed frame:
 
 ```text
@@ -101,7 +93,7 @@ When the server receives a type-0 frame from a client, it:
 [7..N-1] : bytes of the original message payload
 ```
 
-### Client → Server (type 0)
+### Client → server (type 0)
 
 Clients send type-0 frames with a body of:
 
@@ -112,23 +104,16 @@ Clients send type-0 frames with a body of:
 
 ### Termination (type 1)
 
-After sending its configured number of messages, each client:
+After sending its configured number of messages, each client sends a
+type-1 frame with a 2-byte body: `[0] = 1`.
 
-- Sends a type-1 frame with a 2-byte body: `[0] = 1`.
+The server counts type-1 messages from clients. Once it has received
+type-1 from all expected clients, it broadcasts a type-1 message to all
+clients, prints a termination message, and exits.
 
-The server counts type-1 messages from clients:
+Each client terminates after receiving a type-1 message from the server.
 
-- Once it has received type-1 from **all** expected clients, it:
-  1. Broadcasts a type-1 message to all clients
-  2. Prints a termination message
-  3. Exits.
-
-Each client:
-- Terminates after receiving a type-1 message from the server.
-
----
-
-## ⚙️ Build with CMake
+## Build with CMake
 
 From the project root:
 
@@ -137,12 +122,10 @@ cmake -S . -B build
 cmake --build build
 ```
 
-This produces two executables inside `build/`:
-- `server`
-- `client`
+This produces two executables inside `build/`: `server` and `client`.
 
 By default this builds without a sanitizer. To build with AddressSanitizer
-(+ UndefinedBehaviorSanitizer) or ThreadSanitizer instead, pass `-DSANITIZER`:
+(plus UndefinedBehaviorSanitizer) or ThreadSanitizer instead, pass `-DSANITIZER`:
 
 ```bash
 cmake -S . -B build-asan -DSANITIZER=address
@@ -154,8 +137,6 @@ cmake --build build-tsan
 
 ASan and TSan cannot be linked into the same binary, so build separate
 directories for each, as above.
-
----
 
 ## Testing
 
@@ -188,9 +169,7 @@ This script is what CI runs, once per sanitizer configuration
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml). It runs on Linux
 (`ubuntu-latest`), since the code targets POSIX sockets and pthreads.
 
----
-
-## ▶️ Run the Server
+## Run the server
 
 Start the server with:
 
@@ -198,18 +177,16 @@ Start the server with:
 ./build/server <port> <#clients>
 ```
 
-- `<port>` — TCP port to listen on (e.g. 8000)
-- `<#clients>` — expected number of clients that will eventually connect
+- `<port>`: TCP port to listen on (e.g. 8000)
+- `<#clients>`: expected number of clients that will eventually connect
 
-**Example:**
+Example:
 
 ```bash
 ./build/server 8000 3
 ```
 
----
-
-## 💬 Run a Fuzzing Client
+## Run a fuzzing client
 
 Start a client with:
 
@@ -217,27 +194,24 @@ Start a client with:
 ./build/client <IP address> <port> <#messages> <log file path>
 ```
 
-- `<IP address>` — server address (e.g. 127.0.0.1)
-- `<port>` — server port (must match the server)
-- `<#messages>` — number of random messages to send
-- `<log file path>` — where to store all messages received from the server
+- `<IP address>`: server address (e.g. 127.0.0.1)
+- `<port>`: server port (must match the server)
+- `<#messages>`: number of random messages to send
+- `<log file path>`: where to store all messages received from the server
 
-**Example:**
+Example:
 
 ```bash
 ./build/client 127.0.0.1 8000 100 client0.log
 ```
 
-Each client:
-- Spawns a background thread to receive and print messages
-- Generates random bytes via `getentropy()`
-- Converts them to hex using `convert()` from `hex_string.c`
-- Sends type-0 messages followed by a final type-1 control message
-- Logs each incoming message to the specified log file
+Each client spawns a background thread to receive and print messages,
+generates random bytes via `getentropy()`, converts them to hex using
+`convert()` from `hex_string.c`, sends type-0 messages followed by a final
+type-1 control message, and logs each incoming message to the specified
+log file.
 
----
-
-## 📌 Message Logging Format (Client)
+## Message logging format (client)
 
 For every type-0 message received from the server, the client prints and logs:
 
@@ -245,17 +219,15 @@ For every type-0 message received from the server, the client prints and logs:
 printf("%-15s%-10u%s", ip_str, port, message);
 ```
 
-- `ip_str` — dotted IPv4 string of the original sender
-- `port` — sender’s port
-- `message` — hex string payload (includes `\n` at the end)
+- `ip_str`: dotted IPv4 string of the original sender
+- `port`: sender's port
+- `message`: hex string payload (includes `\n` at the end)
 
-**Sample line (conceptual):**
+Sample line (conceptual):
 
 ```text
 192.168.0.10   9000      9391DE3E275ADB19637D   
 ```
-
----
 
 ## Known limitations
 
