@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  multi-client-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [none, address, thread]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang and cmake
+        run: sudo apt-get update && sudo apt-get install -y clang cmake
+
+      - name: Build and run multi-client test (SANITIZER=${{ matrix.sanitizer }})
+        run: scripts/run_multi_client_test.sh ${{ matrix.sanitizer }}
+        env:
+          NUM_CLIENTS: 6
+          NUM_MESSAGES: 40
